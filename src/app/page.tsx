@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { getKpiCounts, getDealsGroupedByStatus, isRecent } from "@/lib/queries";
 
+// Live pipeline data — never bake this into the static build output.
+export const dynamic = "force-dynamic";
+
 const STATUS_ORDER = [
   "Early Discussion",
   "On Hold",

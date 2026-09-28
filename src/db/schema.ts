@@ -1,5 +1,4 @@
-import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
-import { sql } from "drizzle-orm";
+import { pgTable, text, real, boolean, timestamp } from "drizzle-orm/pg-core";
 
 /**
  * `deals` mirrors the "Current" sheet of Weekly Update.xlsx column-for-column.
@@ -8,7 +7,7 @@ import { sql } from "drizzle-orm";
  * appear against multiple counterparty banks as separate pipeline rows
  * (e.g. "Project Broadway" x SMBC and x Nomura are two distinct rows).
  */
-export const deals = sqliteTable("deals", {
+export const deals = pgTable("deals", {
   id: text("id").primaryKey(), // slug of dealName + bank
   dealName: text("deal_name").notNull(),
   sponsors: text("sponsors"),
@@ -20,7 +19,7 @@ export const deals = sqliteTable("deals", {
   dayCount: text("day_count"),
   tenorYears: text("tenor_years"),
   insuredPct: text("insured_pct"),
-  latestCommDate: text("latest_comm_date"), // ISO date
+  latestCommDate: text("latest_comm_date"), // ISO date (kept as text, mirrors sheet)
   statusUpdate: text("status_update"),
   nextStep: text("next_step"),
   underwritingStatus: text("underwriting_status"),
@@ -29,21 +28,21 @@ export const deals = sqliteTable("deals", {
 
   // bookkeeping for the two-way sync (phase 4) — not part of the sheet schema
   lastSyncedSnapshot: text("last_synced_snapshot"), // JSON of the values last confirmed to match the live sheet
-  createdAt: text("created_at").default(sql`(current_timestamp)`),
-  updatedAt: text("updated_at").default(sql`(current_timestamp)`),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 /**
  * `dealDetails` is the "over and above the spreadsheet" layer — for Joseph's
  * own reference only. Never read from or written to Weekly Update.xlsx.
  */
-export const dealDetails = sqliteTable("deal_details", {
+export const dealDetails = pgTable("deal_details", {
   dealId: text("deal_id").primaryKey().references(() => deals.id, { onDelete: "cascade" }),
   personalNotes: text("personal_notes"),
   riskNotes: text("risk_notes"),
   tags: text("tags"), // JSON array
   linkedEmails: text("linked_emails"), // JSON array of {subject, webLink}
-  priorityFlag: integer("priority_flag", { mode: "boolean" }).default(false),
+  priorityFlag: boolean("priority_flag").default(false),
 });
 
 /**
@@ -51,7 +50,7 @@ export const dealDetails = sqliteTable("deal_details", {
  * deal from either direction, timestamped and attributed. This is what the
  * per-deal timeline (prev/next navigation) is built from.
  */
-export const dealUpdates = sqliteTable("deal_updates", {
+export const dealUpdates = pgTable("deal_updates", {
   id: text("id").primaryKey(),
   dealId: text("deal_id").notNull().references(() => deals.id, { onDelete: "cascade" }),
   occurredAt: text("occurred_at").notNull(), // ISO date the update reflects (Latest Communication date)
@@ -61,28 +60,28 @@ export const dealUpdates = sqliteTable("deal_updates", {
   statusAtTime: text("status_at_time"),
   source: text("source").notNull(), // 'import' | 'sheet_edit' | 'app_edit' | 'note'
   note: text("note"), // free-text status update / commentary at this point in time
-  createdAt: text("created_at").default(sql`(current_timestamp)`),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 /**
  * `pendingSyncChanges` is the outbound review queue — nothing reaches the
  * live Weekly Update.xlsx without appearing here first and being approved.
  */
-export const pendingSyncChanges = sqliteTable("pending_sync_changes", {
+export const pendingSyncChanges = pgTable("pending_sync_changes", {
   id: text("id").primaryKey(),
   dealId: text("deal_id").notNull().references(() => deals.id, { onDelete: "cascade" }),
   field: text("field").notNull(),
   oldValue: text("old_value"),
   newValue: text("new_value"),
   status: text("status").notNull().default("pending"), // pending | approved | rejected | synced
-  createdAt: text("created_at").default(sql`(current_timestamp)`),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 /**
  * `archiveDeals` is a straight, read-only import of the Archive_2025 sheet —
  * historical closed/lost deals, kept separate from the live tracker.
  */
-export const archiveDeals = sqliteTable("archive_deals", {
+export const archiveDeals = pgTable("archive_deals", {
   id: text("id").primaryKey(),
   dealName: text("deal_name").notNull(),
   sponsors: text("sponsors"),

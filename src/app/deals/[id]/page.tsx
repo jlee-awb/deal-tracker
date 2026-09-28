@@ -2,6 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getDeal } from "@/lib/queries";
 
+// Live pipeline data — never bake this into the static build output.
+export const dynamic = "force-dynamic";
+
 const FIELD_ROWS: { label: string; key: keyof NonNullable<Awaited<ReturnType<typeof getDeal>>>["deal"] }[] = [
   { label: "Sponsor(s)", key: "sponsors" },
   { label: "Bank", key: "bank" },

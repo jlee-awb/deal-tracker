@@ -1,14 +1,17 @@
-import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
+import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-http";
 import * as schema from "./schema";
-import path from "path";
 
-// Local dev: a plain file-based SQLite DB. When this moves to Vercel + Neon,
-// only this file changes (swap to drizzle-orm/neon-http against a Postgres
-// connection string) — schema.ts and every query stay the same, since none
-// of them use SQLite-specific syntax.
-const sqlite = new Database(path.join(process.cwd(), "dev.db"));
-sqlite.pragma("journal_mode = WAL");
-sqlite.pragma("foreign_keys = ON");
+// Single database for both local dev and production: your Neon project.
+// Set DATABASE_URL — locally in a .env.local file (never committed), and in
+// Vercel under Project Settings → Environment Variables. Nothing else in
+// the app changes between the two.
+if (!process.env.DATABASE_URL) {
+  throw new Error(
+    "DATABASE_URL is not set. Add your Neon connection string to .env.local (local dev) " +
+      "or to the Vercel project's Environment Variables (deployed)."
+  );
+}
 
-export const db = drizzle(sqlite, { schema });
+const sql = neon(process.env.DATABASE_URL);
+export const db = drizzle(sql, { schema });
